@@ -1,0 +1,37 @@
+
+from dotenv import load_dotenv
+load_dotenv()
+
+from langchain.agents import create_agent
+from langchain.tools import tool
+from langchain_core.messages import HumanMessage
+from langchain_ollama import ChatOllama
+from langchain_tavily import TavilySearch
+
+tavily = TavilySearch(max_results=3)
+
+@tool
+def search(query: str) -> str:
+    """Search the internet for a given query."""
+    print(f"Searching for: {query}")
+    return str(tavily.invoke({"query": query}))
+
+model = ChatOllama(
+    model="qwen2.5:3b",
+    temperature=0.7,
+    num_predict=512
+)
+
+agent = create_agent(
+    model=model,
+    tools=[search]
+)
+
+response = agent.invoke({
+    "messages": [
+        HumanMessage(content="What is the weather in Tokyo?")
+    ]
+})
+
+print("Final answer:")
+print(response["messages"][-1].content)

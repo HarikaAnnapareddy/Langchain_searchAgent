@@ -1,5 +1,5 @@
 [project]
-name = "langchain_learning"
+name = "Search_agent"
 
 version = "0.1.0"
 description = "Add your description here"

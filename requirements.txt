@@ -5,4 +5,5 @@ langchain-groq,
 langchain-llamaindex,
 python-dotenv,
 langchain-google-genai,
-langchain-google-search
+langchain-google-search,
+langchain-ollama
