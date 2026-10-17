@@ -1,0 +1,62 @@
+
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from langchain.agents import create_agent
+from langchain_ollama import ChatOllama
+from langchain_tavily import TavilySearch
+
+# Initialize Tavily web search
+tavily = TavilySearch(max_results=5)
+
+# Initialize Ollama model
+model = ChatOllama(
+    model="qwen2.5:3b",
+    temperature=0.3,
+    num_predict=1024
+)
+
+# Create the agent
+agent = create_agent(
+    model=model,
+    tools=[tavily],
+    system_prompt="""
+    You are a job-search assistant.
+
+    Find recent AI, Machine Learning, Data Science,
+    and Data Analyst job openings in Bengaluru, India.
+
+    For each job, provide:
+    1. Job title
+    2. Company name
+    3. Location
+    4. Experience required
+    5. Salary range in INR per year, if available
+    6. Direct application link
+
+    Prefer official company career pages and recent listings.
+    Do not invent jobs, salaries, or application links.
+    Clearly mark salary as not disclosed when unavailable.
+    Distinguish verified information from estimates.
+    Include the source URLs and posting dates when available.
+    """
+)
+
+# Ask your question
+response = agent.invoke({
+    "messages": [
+        {
+            "role": "user",
+            "content": (
+                "Find current AI and Data Science job openings "
+                "in Bengaluru suitable for someone with "
+                "approximately 1 year of experience. "
+                "Include salary ranges and application links to apply directly. "
+            )
+        }
+    ]
+})
+
+# Display the final answer
+print(response["messages"][-1].content)

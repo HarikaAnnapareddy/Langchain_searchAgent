@@ -1,0 +1,90 @@
+
+from typing import List
+from pydantic import BaseModel, Field
+from dotenv import load_dotenv
+
+load_dotenv()
+
+from langchain_ollama import ChatOllama
+from langchain.agents import create_agent
+from langchain_tavily import TavilySearch
+
+
+# 1. Define the schema for each job
+class Job(BaseModel):
+    """Schema for a job posting."""
+
+    url: str = Field(description="Source URL of the job posting")
+    title: str = Field(description="Job title")
+    company: str = Field(description="Company name")
+    location: str = Field(description="Job location")
+    experience: str = Field(description="Required experience")
+    salary: str = Field(
+        description="Annual salary range in INR, or Not disclosed"
+    )
+    application_link: str = Field(
+        description="Direct application link, if available"
+    )
+
+
+# 2. Define the structured response schema
+class AgentResponse(BaseModel):
+    """Structured list of job postings."""
+
+    jobs: List[Job] = Field(
+        description="Job postings found by the agent"
+    )
+
+
+# 3. Initialize the model
+model = ChatOllama(
+    model="qwen2.5:3b",
+    temperature=0.3,
+    num_predict=1024
+)
+
+# 4. Initialize the search tool
+search_tool = TavilySearch(max_results=5)
+
+# 5. Create the agent
+agent = create_agent(
+    model=model,
+    tools=[search_tool],
+    system_prompt="""
+    You are a job-search assistant.
+
+    Find recent AI Engineer, Machine Learning Engineer,
+    Data Scientist, and Data Analyst openings in Bengaluru, India.
+
+    Prefer jobs suitable for candidates with around one year
+    of experience.
+
+    Include the job title, company, location, required experience,
+    annual salary in INR, source URL, and direct application link.
+
+    Do not invent jobs, salaries, or links.
+    If salary information is unavailable, say "Not disclosed".
+    If a direct application link cannot be verified, say so.
+    """,
+    response_format=AgentResponse
+)
+
+# 6. Invoke the agent
+response = agent.invoke({
+    "messages": [
+        {
+            "role": "user",
+            "content": (
+                "Find current AI and Data Science job openings "
+                "in Bengaluru suitable for someone with approximately "
+                "1 year of experience. Include salary ranges and "
+                "direct application links."
+            )
+        }
+    ]
+})
+
+# 7. Print the structured result without a for loop
+result = response.get("structured_response")
+print(response)
+print(result)
