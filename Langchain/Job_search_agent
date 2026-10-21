@@ -6,9 +6,30 @@ load_dotenv()
 from langchain.agents import create_agent
 from langchain_ollama import ChatOllama
 from langchain_tavily import TavilySearch
+from typing import List, Optional
+from pydantic import BaseModel, Field
 
 # Initialize Tavily web search
 tavily = TavilySearch(max_results=5)
+
+
+class Job(BaseModel):
+    title: str = Field(description="Job title")
+    company: str = Field(description="Company name")
+    location: str = Field(description="Job location")
+    experience: str = Field(description="Required experience, if disclosed")
+    salary: Optional[str] = Field(default=None,description="Salary range in INR per year, if disclosed")
+    application_link: str = Field(description="Source or direct application URL")
+    source_url: str = Field(description="URL of the page containing the job information")
+    posted_date: Optional[str] = Field(default=None,description="Posting date, if available")
+
+
+class JobSearchResponse(BaseModel):
+    jobs: List[Job]
+
+
+
+
 
 # Initialize Ollama model
 model = ChatOllama(
@@ -17,31 +38,40 @@ model = ChatOllama(
     num_predict=1024
 )
 
-# Create the agent
+
+
+system_prompt = """
+You are a job-search assistant.
+
+Find recent AI, ML, Data Science, and Data Analyst
+openings in Bengaluru, India.
+
+Prioritize jobs suitable for candidates with
+approximately 1 year of experience.
+
+Use web search to obtain evidence for each job.
+
+Rules:
+- Do not invent job openings or companies.
+- Do not invent salary ranges or experience requirements.
+- Use None for undisclosed salaries and posting dates.
+- Include source URLs and direct application links
+  whenever available.
+- Prefer official company career pages.
+- Do not claim a job is currently open unless
+  the available evidence supports that claim.
+- Return only jobs supported by search evidence.
+"""
+
 agent = create_agent(
     model=model,
     tools=[tavily],
-    system_prompt="""
-    You are a job-search assistant.
-
-    Find recent AI, Machine Learning, Data Science,
-    and Data Analyst job openings in Bengaluru, India.
-
-    For each job, provide:
-    1. Job title
-    2. Company name
-    3. Location
-    4. Experience required
-    5. Salary range in INR per year, if available
-    6. Direct application link
-
-    Prefer official company career pages and recent listings.
-    Do not invent jobs, salaries, or application links.
-    Clearly mark salary as not disclosed when unavailable.
-    Distinguish verified information from estimates.
-    Include the source URLs and posting dates when available.
-    """
+    system_prompt=system_prompt,
+    response_format=JobSearchResponse
 )
+
+
+
 
 # Ask your question
 response = agent.invoke({
@@ -49,14 +79,15 @@ response = agent.invoke({
         {
             "role": "user",
             "content": (
-                "Find current AI and Data Science job openings "
-                "in Bengaluru suitable for someone with "
-                "approximately 1 year of experience. "
-                "Include salary ranges and application links to apply directly. "
+                "Find 5 recent AI and Data Science jobs "
+                "in Bengaluru for candidates with around "
+                "1 year of experience. Include source "
+                "evidence, salaries if disclosed, and "
+                "direct application links."
             )
         }
     ]
 })
 
-# Display the final answer
-print(response["messages"][-1].content)
+print(response.get("structured_response"))
+
